@@ -1,0 +1,887 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><title>Gemini 3.5 Flash Fine-Tuning Workshop</title></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: codelab reader. Sticky step rail on the left, one long readable column on the right, code blocks as instrument panels. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --fg: #16202e;
+  --fg-muted: #526073;
+  --line: #d9dfe7;
+  --accent: #1a5fd0;
+  --accent-soft: #e3ecfb;
+  --gold: #a56a00;
+  --warn-bg: #fff4e0;
+  --warn-line: #e8a33b;
+  --code-bg: #0f1724;
+  --code-fg: #dbe3ee;
+  --code-head: #172234;
+  --code-muted: #8a99ae;
+  --tok-kw: #ff8fb1;
+  --tok-str: #9be28a;
+  --tok-fn: #7cc4ff;
+  --tok-num: #ffc66d;
+  --tok-com: #6f7f96;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --rail: 272px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c121b; --surface: #121a26; --surface-2: #192333; --fg: #e6ebf2; --fg-muted: #9aa7b8;
+    --line: #253244; --accent: #78a9ff; --accent-soft: #17284a; --gold: #f0b94d;
+    --warn-bg: #2a2010; --warn-line: #b9822a;
+    --code-bg: #070b12; --code-fg: #dbe3ee; --code-head: #0f1621; --code-muted: #7c8ba0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c121b; --surface: #121a26; --surface-2: #192333; --fg: #e6ebf2; --fg-muted: #9aa7b8;
+  --line: #253244; --accent: #78a9ff; --accent-soft: #17284a; --gold: #f0b94d;
+  --warn-bg: #2a2010; --warn-line: #b9822a;
+  --code-bg: #070b12; --code-fg: #dbe3ee; --code-head: #0f1621; --code-muted: #7c8ba0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 16px/1.65 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+:not(pre) > code {
+  font: 500 0.88em var(--font-mono); background: var(--surface-2); border: 1px solid var(--line);
+  padding: 0.05em 0.35em; border-radius: 4px; overflow-wrap: anywhere;
+}
+
+/* Top bar */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.topbar-in { display: flex; align-items: center; gap: 12px; height: 56px; max-width: 1240px; margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; font: 600 14px var(--font-body); color: var(--fg); }
+.brand .mark { flex: none; width: 28px; height: 28px; border-radius: 7px; background: var(--fg); color: var(--bg); display: grid; place-items: center; font: 700 12px var(--font-mono); letter-spacing: -0.02em; }
+.brand .txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand .txt em { font-style: normal; color: var(--fg-muted); font-weight: 400; }
+.progress { flex: 1; height: 3px; background: var(--surface-2); border-radius: 2px; overflow: hidden; min-width: 40px; }
+.progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .15s linear; }
+.iconbtn {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px;
+  font: 500 13px var(--font-body); cursor: pointer;
+}
+.iconbtn:hover { background: var(--surface-2); }
+.iconbtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#menu-btn { display: none; }
+
+/* Hero */
+.hero { border-bottom: 1px solid var(--line); background: var(--surface);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 48px 40px; }
+.hero-in { max-width: 1240px; margin: 0 auto; display: grid; gap: 20px; }
+.eyebrow { font: 500 12px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.hero h1 { font: 700 clamp(30px, 4.6vw, 52px)/1.06 var(--font-display); letter-spacing: -0.025em; margin: 0; max-width: 22ch; text-wrap: balance; }
+.hero h1 .hl { color: var(--accent); }
+.host { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font: 700 16px var(--font-display); flex: none; }
+.host p { margin: 0; line-height: 1.4; }
+.host .who { font-weight: 600; }
+.host .role { color: var(--fg-muted); font-size: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.meta li { font: 500 12.5px var(--font-mono); padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--fg-muted); background: var(--bg); }
+.meta li b { color: var(--fg); font-weight: 500; }
+
+/* Shell */
+.shell { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); gap: 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+.rail { position: sticky; top: calc(76px + env(safe-area-inset-top, 0px)); align-self: start; max-height: calc(100vh - 96px); overflow-y: auto; }
+.rail h2 { font: 500 11.5px var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); margin: 0 0 10px 10px; }
+.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.rail a { display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 8px; color: var(--fg-muted); text-decoration: none; font-size: 14px; line-height: 1.35; }
+.rail a .n { flex: none; width: 22px; font: 500 12px var(--font-mono); color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.rail a:hover { background: var(--surface-2); color: var(--fg); }
+.rail a.active { background: var(--accent-soft); color: var(--fg); font-weight: 600; }
+.rail a.active .n { color: var(--accent); }
+
+main { min-width: 0; max-width: 780px; }
+.step { padding-bottom: 40px; margin-bottom: 40px; border-bottom: 1px solid var(--line); }
+.step:last-of-type { border-bottom: 0; }
+.step-head { display: grid; gap: 4px; margin-bottom: 18px; }
+.step-no { font: 500 12px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.step h2 { font: 700 clamp(24px, 3vw, 32px)/1.15 var(--font-display); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.step h3 { font: 700 20px/1.3 var(--font-display); letter-spacing: -0.01em; margin: 30px 0 8px; text-wrap: balance; }
+.step h4 { font: 600 16px/1.4 var(--font-body); margin: 22px 0 6px; }
+.step p { margin: 0 0 14px; }
+.step ol, .step ul { padding-left: 1.4em; margin: 0 0 14px; }
+.step li { margin: 6px 0; }
+.step li::marker { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.step ol > li { padding-left: 4px; }
+.checklist { list-style: none; padding-left: 0 !important; }
+.checklist li { position: relative; padding-left: 30px; }
+.checklist li::before { content: ""; position: absolute; left: 2px; top: 5px; width: 16px; height: 16px; border-radius: 4px; background: var(--accent-soft); border: 1px solid var(--accent); }
+.checklist li::after { content: ""; position: absolute; left: 7px; top: 8px; width: 5px; height: 9px; border: solid var(--accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+aside.warning, aside.note { margin: 14px 0; padding: 12px 16px; border-radius: 8px; background: var(--warn-bg); border: 1px solid var(--warn-line); font-size: 15px; }
+aside.warning p:last-child { margin-bottom: 0; }
+aside.warning::before { content: "Caution"; display: block; font: 600 11.5px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+
+/* Architecture strip */
+.arch { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 14px 0 6px; padding: 0; list-style: none; }
+.arch li { flex: 1 1 140px; min-width: 0; margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); position: relative; }
+.arch .k { display: block; font: 500 11px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-muted); }
+.arch .v { display: block; font-weight: 600; font-size: 14.5px; line-height: 1.3; margin-top: 2px; }
+
+/* Code */
+figure.code { margin: 14px 0 16px; border-radius: 10px; overflow: hidden; background: var(--code-bg); border: 1px solid var(--line); }
+figure.code figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px 6px 14px; background: var(--code-head); border-bottom: 1px solid rgba(255,255,255,0.06); }
+figure.code .lang { font: 500 11.5px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--code-muted); }
+figure.code-output .lang::after { content: " · expected"; }
+figure.code pre { margin: 0; padding: 14px 16px; overflow-x: auto; color: var(--code-fg); font: 400 13.5px/1.6 var(--font-mono); tab-size: 4; }
+figure.code-long pre { max-height: 520px; overflow-y: auto; }
+figure.code code { font: inherit; background: none; border: 0; padding: 0; white-space: pre; }
+.copy { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.04); color: var(--code-fg); font: 500 12px var(--font-body); cursor: pointer; }
+.copy:hover { background: rgba(255,255,255,0.1); }
+.copy svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.copy.done { color: var(--tok-str); border-color: currentColor; }
+.token.comment, .token.prolog { color: var(--tok-com); font-style: italic; }
+.token.keyword, .token.boolean, .token.important, .token.operator.keyword { color: var(--tok-kw); }
+.token.string, .token.triple-quoted-string, .token.char { color: var(--tok-str); }
+.token.function, .token.class-name, .token.builtin { color: var(--tok-fn); }
+.token.number, .token.variable, .token.constant { color: var(--tok-num); }
+.token.punctuation, .token.operator { color: var(--code-muted); }
+.token.interpolation .token.punctuation { color: var(--tok-kw); }
+
+/* Screenshots */
+figure.shot { margin: 16px 0; }
+figure.shot img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+figure.shot figcaption { font-size: 13px; color: var(--fg-muted); margin-top: 6px; }
+figure.shot img { cursor: zoom-in; }
+.lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(5,8,14,0.86); display: grid; place-items: center; cursor: zoom-out;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+/* Pager + credits */
+.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
+.credits { margin-top: 24px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 14px; color: var(--fg-muted); }
+.credits h2 { font: 600 12px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); margin: 0 0 8px; }
+.credits p { margin: 0 0 8px; }
+.credits ul { margin: 0 0 8px; padding-left: 1.2em; }
+.credits li { margin: 3px 0; }
+
+/* Mobile */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block: 24px 64px; }
+  #menu-btn { display: inline-flex; }
+  .rail { position: fixed; z-index: 30; top: calc(56px + env(safe-area-inset-top, 0px)); left: 0; right: 0; max-height: 70vh; background: var(--surface);
+    border-bottom: 1px solid var(--line); box-shadow: 0 16px 32px rgba(0,0,0,0.18);
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
+  .brand .txt em { display: none; }
+  .hero { padding-block: 32px 28px; }
+}
+@media (max-width: 480px) {
+  .iconbtn .lbl { display: none; }
+  .iconbtn { padding: 0 9px; }
+  figure.code pre { font-size: 12.5px; }
+}
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><span class="mark" aria-hidden="true">KL</span><span class="txt">GDG Kuala Lumpur <em>· Workshop codelab</em></span></div>
+    <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+    <button class="iconbtn" id="menu-btn" type="button" aria-expanded="false" aria-controls="rail">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span class="lbl">Steps</span>
+    </button>
+    <button class="iconbtn" id="theme-btn" type="button" aria-label="Switch colour theme">
+      <svg viewBox="0 0 24 24" id="theme-icon"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
+      <span class="lbl" id="theme-lbl">Theme</span>
+    </button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="hero-in">
+    <span class="eyebrow">GDG Kuala Lumpur · Hands-on workshop</span>
+    <h1>Optimizing <span class="hl">Gemini 3.5 Flash</span> via Supervised Fine-Tuning on Gemini Enterprise Agent Platform</h1>
+    <div class="host">
+      <span class="avatar" aria-hidden="true">CT</span>
+      <p><span class="who">Conducted by Christine Tee</span><br><span class="role">Principal Machine Learning Engineer, Turing Enterprises</span></p>
+    </div>
+    <ul class="meta">
+      <li><b>12</b> steps</li>
+      <li>Task <b>article summarization</b></li>
+      <li>Metric <b>ROUGE-1 / 2 / L</b></li>
+      <li>Tuning job <b>~45 min</b></li>
+      <li>Region <b>us-central1</b></li>
+    </ul>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="Codelab steps">
+    <h2>Steps</h2>
+    <ol>
+<li><a href="#step-1" data-step="1"><span class="n">1</span>Introduction</a></li>
+<li><a href="#step-2" data-step="2"><span class="n">2</span>Project setup</a></li>
+<li><a href="#step-3" data-step="3"><span class="n">3</span>Open Cloud Shell Editor</a></li>
+<li><a href="#step-4" data-step="4"><span class="n">4</span>Enable APIs</a></li>
+<li><a href="#step-5" data-step="5"><span class="n">5</span>Set up the project environment</a></li>
+<li><a href="#step-6" data-step="6"><span class="n">6</span>Prepare the training data</a></li>
+<li><a href="#step-7" data-step="7"><span class="n">7</span>Establish baseline performance</a></li>
+<li><a href="#step-8" data-step="8"><span class="n">8</span>Configure and launch fine-tuning</a></li>
+<li><a href="#step-9" data-step="9"><span class="n">9</span>Understand the training code</a></li>
+<li><a href="#step-10" data-step="10"><span class="n">10</span>Compare models</a></li>
+<li><a href="#step-11" data-step="11"><span class="n">11</span>Clean up</a></li>
+<li><a href="#step-12" data-step="12"><span class="n">12</span>Congratulations!</a></li>
+    </ol>
+  </nav>
+  <main id="main">
+<section class="step" id="step-1" aria-labelledby="h-step-1"><header class="step-head"><span class="step-no">Step 01</span><h2 id="h-step-1">Introduction</h2></header>
+          
+            
+          
+          
+          
+          <p>In this lab, you learn to perform the complete workflow of supervised fine-tuning on a Google Gemini model to adapt it for a specific task: article summarization. While large language models are powerful, their general-purpose nature means they can be made even more effective for specific use cases through fine-tuning. By training the model on a high-quality dataset of examples, you can improve its consistency, quality, and efficiency for your target task.</p>
+<p>You&#39;ll use <a rel="noopener" href="https://cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash?utm_campaign=CDR_0x145aeba1_default_b459782510&utm_medium=external&utm_source=event" target="_blank"><strong>Gemini 3.5 Flash</strong></a>, a lightweight and cost-efficient model, and perform the fine-tuning using <a rel="noopener" href="https://cloud.google.com/gemini-enterprise-agent-platform/docs?utm_campaign=CDR_0x145aeba1_default_b459782510&utm_medium=external&utm_source=event" target="_blank"><strong>Gemini Enterprise Agent Platform</strong></a>.</p>
+<h3>Architecture Overview</h3>
+<p>Here&#39;s what we&#39;ll build:</p>
+<ul>
+<li><strong>Cloud Shell</strong>: Your development environment.</li>
+<li><strong>Cloud Storage</strong>: Stores training/validation data in JSONL format.</li>
+<li><strong>Gemini Enterprise Agent Platform Training</strong>: Manages the fine-tuning job.</li>
+<li><strong>Gemini Enterprise Agent Platform Endpoint</strong>: Hosts your fine-tuned model.</li>
+</ul>
+<h3>What you'll learn</h3>
+<ul class="checklist">
+<li>Prepare high-quality datasets for supervised fine-tuning.</li>
+<li>Configure and launch fine-tuning jobs using the <a rel="noopener" href="https://cloud.google.com/gemini-enterprise-agent-platform/docs/python-sdk/use-agent-platform-python-sdk?utm_campaign=CDR_0x145aeba1_default_b459782510&utm_medium=external&utm_source=event" target="_blank">Gemini Enterprise Agent Platform SDK for Python</a>.</li>
+<li>Evaluate models using automated metrics (ROUGE scores).</li>
+<li>Compare base and fine-tuned models to quantify improvements.</li>
+</ul>
+
+
+        </section>
+<section class="step" id="step-2" aria-labelledby="h-step-2"><header class="step-head"><span class="step-no">Step 02</span><h2 id="h-step-2">Project setup</h2></header>
+          
+          
+          
+          <h3>Google Account</h3>
+<p>If you don&#39;t already have a personal Google Account, you must <a rel="noopener" href="https://accounts.google.com/SignUp" target="_blank">create a Google Account</a>.</p>
+<p><strong>Use a personal account</strong> instead of a work or school account.</p>
+<aside class="warning"><p>Work and school accounts may have restrictions that prevent you from enabling the APIs needed for this lab.</p>
+</aside>
+
+<h3>Sign-in to the Google Cloud Console</h3>
+<p>Sign-in to the <a rel="noopener" href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a> using a personal Google account.</p>
+
+<h3>Create a project (optional)</h3>
+<p>If you do not have a current project you&#39;d like to use for this lab, <a rel="noopener" href="https://console.cloud.google.com/projectcreate" target="_blank">create a new project here</a>.</p>
+
+
+
+        </section>
+<section class="step" id="step-3" aria-labelledby="h-step-3"><header class="step-head"><span class="step-no">Step 03</span><h2 id="h-step-3">Open Cloud Shell Editor</h2></header>
+          
+          
+          
+          <ol type="1">
+<li>Click this link to navigate directly to <a rel="noopener" href="https://ide.cloud.google.com/" target="_blank">Cloud Shell Editor</a></li>
+<li>If prompted to authorize at any point today, click <strong>Authorize</strong> to continue.  <figure class="shot" style="max-width:429px"><img src="img/authorize-cloud-shell.png" alt="Click to authorize Cloud Shell" loading="lazy"><figcaption>Click to authorize Cloud Shell</figcaption></figure></li>
+<li>If the terminal doesn&#39;t appear at the bottom of the screen, open it:<ul>
+<li>Click <strong>View</strong></li>
+<li>Click <strong>Terminal</strong><figure class="shot" style="max-width:640px"><img src="img/open-new-terminal.png" alt="Open new terminal in Cloud Shell Editor" loading="lazy"><figcaption>Open new terminal in Cloud Shell Editor</figcaption></figure></li>
+</ul>
+</li>
+<li>In the terminal, set your project with this command:<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-1" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud config set project [PROJECT_ID]</code></pre></figure>
+<ul>
+<li>Example:<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-2" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud config set project lab-project-id-example</code></pre></figure>
+</li>
+<li>If you can&#39;t remember your project ID, you can list all your project IDs with:<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-3" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud projects list</code></pre></figure>
+<figure class="shot" style="max-width:640px"><img src="img/set-project-id.png" alt="Set project id in Cloud Shell Editor terminal" loading="lazy"><figcaption>Set project id in Cloud Shell Editor terminal</figcaption></figure></li>
+</ul>
+</li>
+<li>You should see this message:<figure class="code code-output"><figcaption><span class="lang">Output</span></figcaption><pre><code class="language-text">Updated property [core/project].</code></pre></figure>
+<aside class="warning"><p>If you see a <code>WARNING</code> and are asked <code>Do you want to continue (Y/n)?</code>, then you have likely entered the project ID incorrectly. Press <code>n</code>, press <code>Enter</code>, and try to run the <code>gcloud config set project</code> command again.</p>
+</aside>
+</li>
+</ol>
+
+
+
+        </section>
+<section class="step" id="step-4" aria-labelledby="h-step-4"><header class="step-head"><span class="step-no">Step 04</span><h2 id="h-step-4">Enable APIs</h2></header>
+          
+          
+          
+          <p>To use Gemini Enterprise Agent Platform and other services, you need to enable the necessary APIs in your Google Cloud project.</p>
+<ol type="1">
+<li>In the terminal, enable the APIs:<ul>
+<li><strong>Vertex AI API</strong> (<code>aiplatform.googleapis.com</code>): Enables the use of Vertex AI for fine-tuning and serving models.</li>
+<li><strong>Cloud Storage API</strong> (<code>storage.googleapis.com</code>): Enables the storage of datasets and model artifacts.</li>
+</ul>
+<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-5" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud services enable aiplatform.googleapis.com \
+    storage.googleapis.com</code></pre></figure>
+</li>
+</ol>
+
+
+        </section>
+<section class="step" id="step-5" aria-labelledby="h-step-5"><header class="step-head"><span class="step-no">Step 05</span><h2 id="h-step-5">Set up the project environment</h2></header>
+          
+          
+          
+          <h3>Create a working directory</h3>
+<ol type="1">
+<li>In the <strong>terminal</strong>, create a directory for your project and navigate into it.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-6" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">mkdir gemini-finetuning
+cd gemini-finetuning</code></pre></figure>
+</li>
+</ol>
+<h3>Set up environment variables</h3>
+<ol type="1" start="2">
+<li>In the <strong>terminal</strong>, define the environment variables for your project. We will create an <code>env.sh</code> file to store these variables so they can be easily reloaded if your session disconnects.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-7" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">cat &lt;&lt;EOF &gt; env.sh
+export PROJECT_ID=\$(gcloud config get-value project)
+export REGION=&quot;us-central1&quot;
+export LOCATION=&quot;global&quot;
+export BUCKET_NAME=&quot;\${PROJECT_ID}-gemini-tuning&quot;
+EOF
+
+source env.sh</code></pre></figure>
+</li>
+</ol>
+<h3>Sign in for the Python libraries</h3>
+<ol type="1" start="3">
+<li>The Python scripts in this lab use Application Default Credentials, which are separate from your <code>gcloud</code> login. In the <strong>terminal</strong>, run the command below, open the link it prints, sign in with the same Google account, and paste the verification code back into the terminal.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-23" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud auth application-default login</code></pre></figure>
+</li>
+<li>In the <strong>terminal</strong>, set your project as the quota project for these credentials.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-24" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud auth application-default set-quota-project $PROJECT_ID</code></pre></figure>
+<aside class="warning"><p>Skipping this step makes <code>prepare_data.py</code> fail at the upload with <code>RefreshError: Unexpected response from metadata server: service account info is missing &#39;email&#39; field</code>. If you see it, run the two commands above and run the script again.</p>
+</aside>
+</li>
+</ol>
+<h3>Create a Cloud Storage Bucket</h3>
+<ol type="1" start="5">
+<li>In the <strong>terminal</strong>, create a bucket to store your dataset and model artifacts.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-8" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud storage buckets create gs://$BUCKET_NAME --project=$PROJECT_ID --location=$REGION</code></pre></figure>
+</li>
+</ol>
+<h3>Set up Virtual Environment</h3>
+<ol type="1" start="6">
+<li>We will use <code>uv</code> to manage our Python environment. In the <strong>terminal</strong>, run:<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-9" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">uv venv .venv
+source .venv/bin/activate</code></pre></figure>
+</li>
+<li>In the <strong>terminal</strong>, install the required Python packages.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-10" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">uv pip install google-cloud-aiplatform rouge-score matplotlib pandas tqdm</code></pre></figure>
+</li>
+</ol>
+
+
+        </section>
+<section class="step" id="step-6" aria-labelledby="h-step-6"><header class="step-head"><span class="step-no">Step 06</span><h2 id="h-step-6">Prepare the training data</h2></header>
+          
+          
+          
+          <p>Quality data is the foundation of successful fine-tuning. You will use the <a rel="noopener" href="https://github.com/esdurmus/Wikilingua" target="_blank">WikiLingua dataset</a>, transform it into the specific JSONL format that Gemini requires, and upload it to your storage bucket.</p>
+<ol type="1">
+<li>In the <strong>terminal</strong>, create a file named <code>prepare_data.py</code>.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-11" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">cloudshell edit prepare_data.py</code></pre></figure>
+</li>
+<li>Paste the following code into <code>prepare_data.py</code>.<figure class="code code-long"><figcaption><span class="lang">Python</span><button class="copy" type="button" id="copy-12" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-python">import json
+import os
+import pandas as pd
+from google.cloud import storage
+import subprocess
+
+# Configuration
+BUCKET_NAME = os.environ[&quot;BUCKET_NAME&quot;]
+PROJECT_ID = os.environ[&quot;PROJECT_ID&quot;]
+
+def download_data():
+    print(&quot;Downloading WikiLingua dataset...&quot;)
+    # Using gsutil to copy from public bucket
+    subprocess.run([&quot;gsutil&quot;, &quot;cp&quot;, &quot;gs://github-repo/generative-ai/gemini/tuning/summarization/wikilingua/*&quot;, &quot;.&quot;], check=True)
+
+def convert_to_gemini_format(input_file, output_file, max_samples=1000):
+    print(f&quot;Converting {input_file} to Gemini format (first {max_samples} samples)...&quot;)
+    converted_data = []
+    with open(input_file, &#x27;r&#x27;) as f:
+        for i, line in enumerate(f):
+            if i &gt;= max_samples:
+                break
+            obj = json.loads(line)
+            messages = obj.get(&quot;messages&quot;, [])
+
+            # Convert messages to Gemini format
+            # Input: {&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...&quot;}, {&quot;role&quot;: &quot;model&quot;, &quot;content&quot;: &quot;...&quot;}]}
+            # Output: {&quot;contents&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;parts&quot;: [{&quot;text&quot;: &quot;...&quot;}]}, {&quot;role&quot;: &quot;model&quot;, &quot;parts&quot;: [{&quot;text&quot;: &quot;...&quot;}]}]}
+
+            contents = []
+            for msg in messages:
+                role = msg[&quot;role&quot;]
+                content = msg[&quot;content&quot;]
+                contents.append({
+                    &quot;role&quot;: role,
+                    &quot;parts&quot;: [{&quot;text&quot;: content}]
+                })
+
+            converted_data.append({&quot;contents&quot;: contents})
+
+    with open(output_file, &#x27;w&#x27;) as f:
+        for item in converted_data:
+            f.write(json.dumps(item) + &quot;\n&quot;)
+
+    print(f&quot;Saved {len(converted_data)} examples to {output_file}&quot;)
+
+def upload_to_gcs(local_file, destination_blob_name):
+    print(f&quot;Uploading {local_file} to gs://{BUCKET_NAME}/{destination_blob_name}...&quot;)
+    storage_client = storage.Client(project=PROJECT_ID)
+    bucket = storage_client.bucket(BUCKET_NAME)
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename(local_file)
+    print(&quot;Upload complete.&quot;)
+
+def main():
+    download_data()
+
+    # Process Training Data
+    convert_to_gemini_format(&quot;sft_train_samples.jsonl&quot;, &quot;train_gemini.jsonl&quot;)
+    upload_to_gcs(&quot;train_gemini.jsonl&quot;, &quot;datasets/train/train_gemini.jsonl&quot;)
+
+    # Process Validation Data
+    convert_to_gemini_format(&quot;sft_val_samples.jsonl&quot;, &quot;val_gemini.jsonl&quot;)
+    upload_to_gcs(&quot;val_gemini.jsonl&quot;, &quot;datasets/val/val_gemini.jsonl&quot;)
+
+    print(&quot;Data preparation complete!&quot;)
+
+if __name__ == &quot;__main__&quot;:
+    main()</code></pre></figure>
+</li>
+<li>In the <strong>terminal</strong>, run the data preparation script.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-13" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">python prepare_data.py</code></pre></figure>
+</li>
+</ol>
+
+
+        </section>
+<section class="step" id="step-7" aria-labelledby="h-step-7"><header class="step-head"><span class="step-no">Step 07</span><h2 id="h-step-7">Establish baseline performance</h2></header>
+          
+          
+          
+          <p>Before fine-tuning, you need a benchmark. You will measure how well the base <code>gemini-3.5-flash</code> model performs on the summarization task using ROUGE scores.</p>
+<ol type="1">
+<li>In the <strong>terminal</strong>, create a file named <code>evaluate.py</code>.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-14" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">cloudshell edit evaluate.py</code></pre></figure>
+</li>
+<li>Paste the following code into <code>evaluate.py</code>.<figure class="code code-long"><figcaption><span class="lang">Python</span><button class="copy" type="button" id="copy-15" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-python">import argparse
+import json
+import os
+import pandas as pd
+from google import genai
+from google.genai import types
+from rouge_score import rouge_scorer
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import time
+import subprocess
+
+# Configuration for Google Gen AI SDK
+PROJECT_ID = os.environ.get(&quot;PROJECT_ID&quot;, &quot;&quot;)
+
+def get_client(model_name):
+    os.environ[&quot;GOOGLE_GENAI_USE_ENTERPRISE&quot;] = &quot;true&quot;
+    os.environ[&quot;GOOGLE_CLOUD_PROJECT&quot;] = PROJECT_ID
+    if &quot;locations/&quot; in model_name:
+        parts = model_name.split(&quot;/&quot;)
+        loc = parts[parts.index(&quot;locations&quot;) + 1]
+        if loc == &quot;us&quot;:
+            loc = &quot;us-central1&quot;
+    else:
+        loc = os.environ.get(&quot;LOCATION&quot;, &quot;global&quot;)
+    os.environ[&quot;GOOGLE_CLOUD_LOCATION&quot;] = loc
+    return genai.Client()
+
+def evaluate(model_name, test_file, max_samples=50, output_json=&quot;results.json&quot;):
+    print(f&quot;Evaluating model: {model_name}&quot;)
+    client = get_client(model_name)
+
+    # Load Test Data
+    test_df = pd.read_csv(test_file)
+    test_df = test_df.head(max_samples)
+
+    config = types.GenerateContentConfig(
+        temperature=0.1,
+        max_output_tokens=1024,
+    )
+
+    scorer = rouge_scorer.RougeScorer([&#x27;rouge1&#x27;, &#x27;rouge2&#x27;, &#x27;rougeL&#x27;], use_stemmer=True)
+    results = []
+
+    for index, row in tqdm(test_df.iterrows(), total=len(test_df)):
+        input_text = row[&#x27;input_text&#x27;]
+        reference_summary = row[&#x27;output_text&#x27;]
+
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=input_text,
+                config=config,
+            )
+            generated_summary = response.text
+
+            scores = scorer.score(reference_summary, generated_summary)
+
+            results.append({
+                &quot;generated&quot;: generated_summary,
+                &quot;reference&quot;: reference_summary,
+                &quot;rouge1&quot;: scores[&#x27;rouge1&#x27;].fmeasure,
+                &quot;rouge2&quot;: scores[&#x27;rouge2&#x27;].fmeasure,
+                &quot;rougeL&quot;: scores[&#x27;rougeL&#x27;].fmeasure
+            })
+        except Exception as e:
+            print(f&quot;Error processing example {index}: {e}&quot;)
+            # Sleep briefly to avoid quota issues if hitting limits
+            time.sleep(1)
+
+    # Save results
+    with open(output_json, &#x27;w&#x27;) as f:
+        json.dump(results, f, indent=2)
+
+    return pd.DataFrame(results)
+
+def plot_results(df, title, filename):
+    os.makedirs(&quot;plots&quot;, exist_ok=True)
+
+    metrics = [&#x27;rouge1&#x27;, &#x27;rouge2&#x27;, &#x27;rougeL&#x27;]
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+    for i, metric in enumerate(metrics):
+        axes[i].hist(df[metric], bins=10, alpha=0.7, color=&#x27;skyblue&#x27;, edgecolor=&#x27;black&#x27;)
+        axes[i].set_title(f&#x27;{metric} Distribution&#x27;)
+        axes[i].set_xlabel(&#x27;Score&#x27;)
+        axes[i].set_ylabel(&#x27;Count&#x27;)
+
+    plt.suptitle(title)
+    plt.tight_layout()
+    plt.savefig(f&quot;plots/{filename}&quot;)
+    print(f&quot;Plot saved to plots/{filename}&quot;)
+
+def compare_results(baseline_file, tuned_file):
+    with open(baseline_file, &#x27;r&#x27;) as f:
+        baseline_data = pd.DataFrame(json.load(f))
+    with open(tuned_file, &#x27;r&#x27;) as f:
+        tuned_data = pd.DataFrame(json.load(f))
+
+    print(&quot;\n--- Comparison ---&quot;)
+    metrics = [&#x27;rouge1&#x27;, &#x27;rouge2&#x27;, &#x27;rougeL&#x27;]
+    for metric in metrics:
+        base_mean = baseline_data[metric].mean()
+        tuned_mean = tuned_data[metric].mean()
+        diff = tuned_mean - base_mean
+        print(f&quot;{metric}: Base={base_mean:.4f}, Tuned={tuned_mean:.4f}, Diff={diff:+.4f}&quot;)
+
+    # Comparative Plot
+    os.makedirs(&quot;plots&quot;, exist_ok=True)
+    comparison_df = pd.DataFrame({
+        &#x27;Metric&#x27;: metrics,
+        &#x27;Baseline&#x27;: [baseline_data[m].mean() for m in metrics],
+        &#x27;Tuned&#x27;: [tuned_data[m].mean() for m in metrics]
+    })
+
+    comparison_df.plot(x=&#x27;Metric&#x27;, y=[&#x27;Baseline&#x27;, &#x27;Tuned&#x27;], kind=&#x27;bar&#x27;, figsize=(10, 6))
+    plt.title(&#x27;Baseline vs Tuned Model Performance&#x27;)
+    plt.ylabel(&#x27;Average Score&#x27;)
+    plt.xticks(rotation=0)
+    plt.tight_layout()
+    plt.savefig(&quot;plots/comparison.png&quot;)
+    print(&quot;Comparison plot saved to plots/comparison.png&quot;)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(&quot;--model&quot;, type=str, default=&quot;gemini-3.5-flash&quot;, help=&quot;Model resource name&quot;)
+    parser.add_argument(&quot;--baseline&quot;, type=str, help=&quot;Path to baseline results json for comparison&quot;)
+    parser.add_argument(&quot;--output&quot;, type=str, default=&quot;results.json&quot;, help=&quot;Output file for results&quot;)
+    args = parser.parse_args()
+
+    # Ensure test data exists (it was downloaded in prepare_data step)
+    if not os.path.exists(&quot;sft_test_samples.csv&quot;):
+        # Fallback download if needed
+        subprocess.run([&quot;gsutil&quot;, &quot;cp&quot;, &quot;gs://github-repo/generative-ai/gemini/tuning/summarization/wikilingua/sft_test_samples.csv&quot;, &quot;.&quot;], check=True)
+
+    df = evaluate(args.model, &quot;sft_test_samples.csv&quot;, output_json=args.output)
+
+    print(&quot;\n--- Results Summary ---&quot;)
+    print(df.describe())
+
+    plot_filename = &quot;baseline_dist.png&quot; if not args.baseline else &quot;tuned_dist.png&quot;
+    plot_results(df, f&quot;ROUGE Scores - {args.model}&quot;, plot_filename)
+
+    if args.baseline:
+        compare_results(args.baseline, args.output)
+
+if __name__ == &quot;__main__&quot;:
+    main()</code></pre></figure>
+</li>
+<li>In the <strong>terminal</strong>, run the baseline evaluation.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-16" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">python evaluate.py --model &quot;gemini-3.5-flash&quot; --output &quot;baseline.json&quot;</code></pre></figure>
+This will generate a <code>baseline.json</code> file and a plot in <code>plots/baseline_dist.png</code>.</li>
+</ol>
+
+
+        </section>
+<section class="step" id="step-8" aria-labelledby="h-step-8"><header class="step-head"><span class="step-no">Step 08</span><h2 id="h-step-8">Configure and launch fine-tuning</h2></header>
+          
+          
+          
+          <p>Now you will launch a managed fine-tuning job on Gemini Enterprise Agent Platform.</p>
+<ol type="1">
+<li>In the <strong>terminal</strong>, create a file named <code>tune.py</code>.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-17" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">cloudshell edit tune.py</code></pre></figure>
+</li>
+<li>Paste the following code into <code>tune.py</code>.<figure class="code code-long"><figcaption><span class="lang">Python</span><button class="copy" type="button" id="copy-18" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-python">import os
+import time
+from google import genai
+from google.genai import types
+
+# Configuration for Google Gen AI SDK
+os.environ[&quot;GOOGLE_GENAI_USE_ENTERPRISE&quot;] = &quot;true&quot;
+os.environ[&quot;GOOGLE_CLOUD_PROJECT&quot;] = os.environ.get(&quot;PROJECT_ID&quot;, &quot;&quot;)
+os.environ[&quot;GOOGLE_CLOUD_LOCATION&quot;] = os.environ.get(&quot;REGION&quot;, &quot;us-central1&quot;)
+
+BUCKET_NAME = os.environ[&quot;BUCKET_NAME&quot;]
+client = genai.Client()
+
+def train():
+    print(&quot;Launching fine-tuning job...&quot;)
+
+    training_dataset = types.TuningDataset(
+        gcs_uri=f&quot;gs://{BUCKET_NAME}/datasets/train/train_gemini.jsonl&quot;
+    )
+    validation_dataset = types.TuningValidationDataset(
+        gcs_uri=f&quot;gs://{BUCKET_NAME}/datasets/val/val_gemini.jsonl&quot;
+    )
+
+    tuning_job = client.tunings.tune(
+        base_model=&quot;gemini-3.5-flash&quot;,
+        training_dataset=training_dataset,
+        config=types.CreateTuningJobConfig(
+            tuned_model_display_name=&quot;gemini-3.5-flash-wikilingua&quot;,
+            validation_dataset=validation_dataset,
+            adapter_size=types.AdapterSize.ADAPTER_SIZE_FOUR,
+            epoch_count=1,
+        ),
+    )
+
+    print(f&quot;Job started: {tuning_job.name}&quot;)
+    print(&quot;Waiting for job to complete... (this may take ~45 minutes)&quot;)
+
+    running_states = {&quot;JOB_STATE_PENDING&quot;, &quot;JOB_STATE_RUNNING&quot;}
+    while tuning_job.state in running_states:
+        time.sleep(60)
+        tuning_job = client.tunings.get(name=tuning_job.name)
+        print(f&quot;Status: {tuning_job.state}&quot;)
+
+    print(&quot;Job completed!&quot;)
+    print(f&quot;Tuned Model Endpoint: {tuning_job.tuned_model.endpoint}&quot;)
+    return tuning_job.tuned_model.endpoint
+
+if __name__ == &quot;__main__&quot;:
+    train()</code></pre></figure>
+</li>
+<li>In the <strong>terminal</strong>, run the fine-tuning script.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-19" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">python tune.py</code></pre></figure>
+<strong>Note</strong>: This process can take ~45 minutes. You can monitor the job in the <a rel="noopener" href="https://console.cloud.google.com/agent-platform/generative/language/tuning?utm_campaign=CDR_0x145aeba1_default_b459782510&utm_medium=external&utm_source=event" target="_blank">Gemini Enterprise Agent Platform Console</a>.</li>
+</ol>
+
+
+        </section>
+<section class="step" id="step-9" aria-labelledby="h-step-9"><header class="step-head"><span class="step-no">Step 09</span><h2 id="h-step-9">Understand the training code</h2></header>
+          
+          
+          
+          <p>While your job is running, let&#39;s take a closer look at the <code>tune.py</code> script to understand how the fine-tuning works.</p>
+<h3>Managed Supervised Fine-Tuning</h3>
+<p>The script uses the <code>client.tunings.tune</code> method from the Google Gen AI SDK to submit a managed tuning job. This abstracts away the complexity of provisioning infrastructure, distributing the training, and managing checkpoints.</p>
+<figure class="code"><figcaption><span class="lang">Python</span><button class="copy" type="button" id="copy-20" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-python">tuning_job = client.tunings.tune(
+    base_model=&quot;gemini-3.5-flash&quot;,
+    training_dataset=training_dataset,
+    # ...
+)</code></pre></figure>
+<h3>LoRA Configuration</h3>
+<p>Instead of manually defining a <code>LoraConfig</code> like you might in open-source frameworks, Gemini Enterprise Agent Platform simplifies this into a few key parameters:</p>
+<ul>
+<li><strong><code>adapter_size</code></strong>: This parameter (set to <code>4</code> in our script) controls the rank of the LoRA adapters. A larger size allows the model to learn more complex adaptations but increases the number of trainable parameters.</li>
+<li><strong><code>epoch_count</code></strong>: We set this to <code>1</code> for this lab to keep the training time short (~20 minutes). In a production scenario, you might increase this to allow the model to learn more deeply from your data, though you should watch out for overfitting.</li>
+</ul>
+<h3>Model Selection</h3>
+<p>We explicitly specify <code>base_model="gemini-3.5-flash"</code>. Gemini Enterprise Agent Platform supports various versions of Gemini, and pinning a specific version ensures your pipeline remains stable and reproducible.</p>
+
+
+        </section>
+<section class="step" id="step-10" aria-labelledby="h-step-10"><header class="step-head"><span class="step-no">Step 10</span><h2 id="h-step-10">Compare models</h2></header>
+          
+          
+          
+          <p>Once the fine-tuning job is complete, you can compare the performance of your new model against the baseline.</p>
+<ol type="1">
+<li>Get your tuned model endpoint. It was printed at the end of the <code>tune.py</code> script. It will look something like <code>projects/.../locations/.../endpoints/...</code>.</li>
+<li>Run the evaluation script again, this time passing your tuned model and the baseline results for comparison.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-21" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash"># Replace [YOUR_TUNED_MODEL_ENDPOINT] with the actual endpoint name
+export TUNED_MODEL=&quot;projects/[YOUR_PROJECT_ID]/locations/[YOUR_REGION]/endpoints/[YOUR_ENDPOINT_ID]&quot;
+
+python evaluate.py --model &quot;$TUNED_MODEL&quot; --baseline &quot;baseline.json&quot; --output &quot;tuned.json&quot;</code></pre></figure>
+</li>
+<li>View the results. The script will output a comparison of ROUGE scores and generate a <code>plots/comparison.png</code> chart showing the improvement.You can view the plots by opening the <code>plots</code> folder in the Cloud Shell Editor.</li>
+</ol>
+
+
+        </section>
+<section class="step" id="step-11" aria-labelledby="h-step-11"><header class="step-head"><span class="step-no">Step 11</span><h2 id="h-step-11">Clean up</h2></header>
+          
+          
+          
+          <p>To avoid incurring charges, delete the resources you created.</p>
+<ol type="1">
+<li>In the <strong>terminal</strong>, delete the Cloud Storage bucket and the tuned model.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-22" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud storage rm -r gs://$BUCKET_NAME
+# Note: You can delete the model endpoint from the Gemini Enterprise Agent Platform Console</code></pre></figure>
+</li>
+</ol>
+
+
+        </section>
+<section class="step" id="step-12" aria-labelledby="h-step-12"><header class="step-head"><span class="step-no">Step 12</span><h2 id="h-step-12">Congratulations!</h2></header>
+          
+          
+          
+          <p>You have successfully fine-tuned Gemini 3.5 Flash on Gemini Enterprise Agent Platform!</p>
+<h3>Recap</h3>
+<p>In this lab, you:</p>
+<ul>
+<li>Prepared a dataset in JSONL format for Gemini fine-tuning.</li>
+<li>Established a baseline using the base Gemini 3.5 Flash model.</li>
+<li>Launched a supervised fine-tuning job on Gemini Enterprise Agent Platform.</li>
+<li>Evaluated and compared the fine-tuned model against the baseline.</li>
+</ul>
+
+
+        </section>
+    <div class="pager">
+      <a class="iconbtn" href="#step-1">Back to the start</a>
+    </div>
+    <section class="credits" aria-labelledby="credits-h">
+      <h2 id="credits-h">Credits and licence</h2>
+      <p>This workshop is part of the <a rel="noopener" href="https://cloud.google.com/blog/topics/developers-practitioners/production-ready-ai-with-google-cloud-learning-path">Production-Ready AI with Google Cloud</a> learning path. Adapted with modifications from material by Drew Brown, Google. The original text and screenshots are licensed under <a rel="noopener" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> and the code samples under the <a rel="noopener" href="https://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a>. This page is an independent community adaptation and is not an official Google page.</p>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" data-manual></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script>
+(function () {
+  var root = document.documentElement;
+
+  // Theme toggle: system -> dark -> light, remembered per viewer.
+  var themeBtn = document.getElementById('theme-btn');
+  var themeLbl = document.getElementById('theme-lbl');
+  function currentDark() {
+    var t = root.getAttribute('data-theme');
+    if (t) return t === 'dark';
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function applyTheme(t) {
+    if (t === 'dark' || t === 'light') root.setAttribute('data-theme', t); else root.removeAttribute('data-theme');
+    themeLbl.textContent = currentDark() ? 'Light mode' : 'Dark mode';
+  }
+  var saved = null;
+  try { saved = localStorage.getItem('codelab-theme'); } catch (e) {}
+  applyTheme(saved);
+  themeBtn.addEventListener('click', function () {
+    var next = currentDark() ? 'light' : 'dark';
+    applyTheme(next);
+    try { localStorage.setItem('codelab-theme', next); } catch (e) {}
+  });
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { applyTheme(root.getAttribute('data-theme')); });
+  }
+
+  // Syntax highlighting.
+  if (window.Prism) {
+    document.querySelectorAll('figure.code code').forEach(function (el) { Prism.highlightElement(el); });
+  }
+
+  // Copy buttons.
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var code = btn.closest('figure').querySelector('code');
+      var text = code.textContent;
+      var label = btn.querySelector('span');
+      function done(msg) {
+        label.textContent = msg; btn.classList.add('done');
+        setTimeout(function () { label.textContent = 'Copy'; btn.classList.remove('done'); }, 1600);
+      }
+      function fallback() {
+        var r = document.createRange(); r.selectNodeContents(code);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        done(ok ? 'Copied' : 'Selected, press Ctrl+C');
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done('Copied'); }, fallback);
+      } else { fallback(); }
+    });
+  });
+
+  // Screenshot lightbox.
+  document.querySelectorAll('figure.shot img').forEach(function (img) {
+    img.addEventListener('click', function () {
+      var box = document.createElement('div');
+      box.className = 'lightbox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', img.alt);
+      var big = document.createElement('img'); big.src = img.src; big.alt = img.alt;
+      box.appendChild(big);
+      function close() { box.remove(); document.removeEventListener('keydown', onKey); }
+      function onKey(e) { if (e.key === 'Escape') close(); }
+      box.addEventListener('click', close); document.addEventListener('keydown', onKey);
+      document.body.appendChild(box);
+    });
+  });
+
+  // Mobile step menu.
+  var rail = document.getElementById('rail');
+  var menuBtn = document.getElementById('menu-btn');
+  var mq = window.matchMedia('(max-width: 900px)');
+  function setMenu(open) {
+    menuBtn.setAttribute('aria-expanded', String(open));
+    rail.hidden = mq.matches && !open;
+  }
+  setMenu(false);
+  mq.addEventListener('change', function () { setMenu(false); });
+  menuBtn.addEventListener('click', function () { setMenu(rail.hidden); });
+  rail.addEventListener('click', function (e) { if (e.target.closest('a') && mq.matches) setMenu(false); });
+
+  // Scroll spy + progress.
+  var links = {};
+  rail.querySelectorAll('a[data-step]').forEach(function (a) { links['step-' + a.dataset.step] = a; });
+  var steps = Array.prototype.slice.call(document.querySelectorAll('section.step'));
+  var bar = document.getElementById('progress');
+  function onScroll() {
+    var y = window.scrollY + 120, active = steps[0];
+    steps.forEach(function (s) { if (s.offsetTop <= y) active = s; });
+    Object.keys(links).forEach(function (k) { links[k].classList.toggle('active', k === active.id); });
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (max > 0 ? Math.min(100, window.scrollY / max * 100) : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // Open the step named in the link.
+  if (location.hash && /^#step-\d+$/.test(location.hash)) {
+    var target = document.querySelector(location.hash);
+    if (target) setTimeout(function () { target.scrollIntoView(); }, 50);
+  }
+})();
+</script>
+
+
+</body></html>
