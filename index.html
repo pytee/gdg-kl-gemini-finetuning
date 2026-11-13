@@ -492,17 +492,12 @@ import subprocess
 PROJECT_ID = os.environ.get(&quot;PROJECT_ID&quot;, &quot;&quot;)
 
 def get_client(model_name):
-    os.environ[&quot;GOOGLE_GENAI_USE_ENTERPRISE&quot;] = &quot;true&quot;
-    os.environ[&quot;GOOGLE_CLOUD_PROJECT&quot;] = PROJECT_ID
     if &quot;locations/&quot; in model_name:
         parts = model_name.split(&quot;/&quot;)
         loc = parts[parts.index(&quot;locations&quot;) + 1]
-        if loc == &quot;us&quot;:
-            loc = &quot;us-central1&quot;
     else:
         loc = os.environ.get(&quot;LOCATION&quot;, &quot;global&quot;)
-    os.environ[&quot;GOOGLE_CLOUD_LOCATION&quot;] = loc
-    return genai.Client()
+    return genai.Client(vertexai=True, project=PROJECT_ID, location=loc)
 
 def evaluate(model_name, test_file, max_samples=50, output_json=&quot;results.json&quot;):
     print(f&quot;Evaluating model: {model_name}&quot;)
@@ -724,7 +719,10 @@ if __name__ == &quot;__main__&quot;:
           
           <p>Once the fine-tuning job is complete, you can compare the performance of your new model against the baseline.</p>
 <ol type="1">
-<li>Get your tuned model endpoint. It was printed at the end of the <code>tune.py</code> script. It will look something like <code>projects/.../locations/.../endpoints/...</code>.</li>
+<li>Get your tuned model endpoint. It was printed at the end of the <code>tune.py</code> script. It will look something like <code>projects/.../locations/.../endpoints/...</code>.<aside class="warning"><p>Copy the endpoint exactly as printed. The tuned model may be served from the <code>us</code> multi-region, so the path can say <code>locations/us</code> even though the job ran in <code>us-central1</code>. Don&#39;t change it, or you&#39;ll get <code>404 Endpoint not found</code>. If you lost the endpoint, list it with:</p>
+<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-25" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">gcloud ai endpoints list --region=us</code></pre></figure>
+<p>The full name is <code>projects/YOUR_PROJECT_ID/locations/us/endpoints/ENDPOINT_ID</code>. If the list is empty, try <code>--region=us-central1</code>.</p>
+</aside></li>
 <li>Run the evaluation script again, this time passing your tuned model and the baseline results for comparison.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-21" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash"># Replace [YOUR_TUNED_MODEL_ENDPOINT] with the actual endpoint name
 export TUNED_MODEL=&quot;projects/[YOUR_PROJECT_ID]/locations/[YOUR_REGION]/endpoints/[YOUR_ENDPOINT_ID]&quot;
 
