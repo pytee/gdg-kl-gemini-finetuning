@@ -721,11 +721,14 @@ if __name__ == &quot;__main__&quot;:
 <ol type="1">
 <li>Get your tuned model endpoint. It was printed at the end of the <code>tune.py</code> script. It will look something like <code>projects/.../locations/.../endpoints/...</code>.<aside class="warning"><p>Copy the endpoint exactly as printed. The tuned model may be served from the <code>us</code> multi-region, so the path can say <code>locations/us</code> even though the job ran in <code>us-central1</code>. Don&#39;t change it, or you&#39;ll get <code>404 Endpoint not found</code>.</p>
 <p><strong>Backup: set it automatically.</strong> If you lost the printed endpoint, or the console only shows the endpoint ID, this looks up the full endpoint name and saves it in <code>TUNED_MODEL</code>:</p>
-<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-25" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">export TUNED_MODEL=$(gcloud ai endpoints list --region=us \
+<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-25" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash">ENDPOINT_REGION=us
+ENDPOINT_ID=$(gcloud ai endpoints list --region=$ENDPOINT_REGION \
   --filter=&quot;displayName=gemini-3.5-flash-wikilingua&quot; \
   --sort-by=~createTime --limit=1 --format=&quot;value(name)&quot;)
+PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format=&quot;value(projectNumber)&quot;)
+export TUNED_MODEL=&quot;projects/${PROJECT_NUMBER}/locations/${ENDPOINT_REGION}/endpoints/${ENDPOINT_ID}&quot;
 echo $TUNED_MODEL</code></pre></figure>
-<p>It should print <code>projects/.../locations/us/endpoints/...</code>. If it prints an empty line, change <code>--region=us</code> to <code>--region=us-central1</code> and run it again. Then, in the next step, skip the <code>export</code> line and run only the <code>python evaluate.py</code> command.</p>
+<p>It should print <code>projects/.../locations/us/endpoints/...</code>. If it ends in <code>/endpoints/</code> with no number, change <code>ENDPOINT_REGION=us</code> to <code>ENDPOINT_REGION=us-central1</code> and run it again. Then, in the next step, skip the <code>export</code> line and run only the <code>python evaluate.py</code> command.</p>
 </aside></li>
 <li>Run the evaluation script again, this time passing your tuned model and the baseline results for comparison.<figure class="code"><figcaption><span class="lang">Shell</span><button class="copy" type="button" id="copy-21" aria-label="Copy code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span>Copy</span></button></figcaption><pre><code class="language-bash"># Replace [YOUR_TUNED_MODEL_ENDPOINT] with the actual endpoint name
 export TUNED_MODEL=&quot;projects/[YOUR_PROJECT_ID]/locations/[YOUR_REGION]/endpoints/[YOUR_ENDPOINT_ID]&quot;
